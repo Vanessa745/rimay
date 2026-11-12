@@ -226,3 +226,130 @@
     font-size: 19px;
   }
 }
+
+.voice-translate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  background: #032964;
+  color: #ffffff;
+
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  transition: background 0.2s ease;
+}
+
+.voice-translate-btn:hover:not(:disabled) {
+  background: #05636c;
+}
+
+.voice-translate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  width: 100%;
+  padding: 18px;
+
+  background: #edf6f4;
+  border: 1px solid #c7dfda;
+  border-radius: 12px;
+
+  color: #05636c;
+}
+
+.voice-progress strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.voice-progress p {
+  color: #56736e;
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .voice-translate-btn {
+    width: 100%;
+  }
+
+  .voice-progress {
+    align-items: flex-start;
+  }
+}
+
+/* RIMAY - Text to Speech */
+
+.translation-audio {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.listen-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  padding: 11px 16px;
+  border: 1px solid #bddbd7;
+  border-radius: 11px;
+
+  background: #e5f3f0;
+  color: #05636c;
+
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.listen-button:hover:not(:disabled) {
+  background: #d3eae5;
+}
+
+.listen-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.translation-audio audio {
+  width: min(100%, 320px);
+  height: 42px;
+}
+
+.audio-error {
+  width: 100%;
+  color: #9b0334;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .translation-audio {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .listen-button,
+  .translation-audio audio {
+    width: 100%;
+  }
+}

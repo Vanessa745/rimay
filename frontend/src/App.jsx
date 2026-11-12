@@ -6,6 +6,7 @@ import {
 import { translateText } from './services/translationService';
 import AudioRecorder from "./components/AudioRecorder";
 import { transcribeAudio } from "./services/speechService";
+import TranslationAudio from "./components/TranslationAudio";
 import './App.css';
 
 const MAX_LENGTH = 1000;
@@ -28,8 +29,10 @@ export default function App() {
   const [speechStatus, setSpeechStatus] = useState("idle");
   const [speechError, setSpeechError] = useState("");
   const [recordedLanguage, setRecordedLanguage] = useState(null);
+  const [voicePlaybackId, setVoicePlaybackId] = useState(0);
   const controllerRef = useRef(null);
   const requestIdRef = useRef(0);
+  const [autoPlayVoice, setAutoPlayVoice] = useState(false);
 
   function cancelPending() {
     requestIdRef.current += 1;
@@ -47,20 +50,26 @@ export default function App() {
   }
 
   function changeText(nextText) {
+    setAutoPlayVoice(false);
     setText(nextText.slice(0, MAX_LENGTH));
     resetOutput();
   }
 
   function swapLanguages() {
+    setAutoPlayVoice(false);
+
     const oldSource = source;
     setSource(target);
     setTarget(oldSource);
+
     const reverseText = result || text;
     setText(reverseText.slice(0, MAX_LENGTH));
+
     resetOutput();
   }
 
   async function handleTranslate() {
+    setAutoPlayVoice(false);
     const cleanText = text.trim();
     if (!cleanText || status === 'loading') return;
 
@@ -109,6 +118,7 @@ export default function App() {
     }
 
     setSpeechStatus("loading");
+    setVoiceStage("transcribing");
     setSpeechError("");
 
     try {
@@ -130,6 +140,98 @@ export default function App() {
     }
   };
 
+  const [voiceStage, setVoiceStage] = useState("");
+
+  
+  const handleVoiceTranslate = async () => {
+    if (
+      !recordedAudio ||
+      recordedLanguage !== source ||
+      speechStatus === "loading" ||
+      status === "loading"
+    ) {
+      return;
+    }
+
+    const currentSource = source;
+    const currentTarget = target;
+
+    // Limpiar resultados anteriores.
+    resetOutput();
+
+    setSpeechStatus("loading");
+    setVoiceStage("transcribing");
+    setSpeechError("");
+
+    try {
+      // 1. Reconocimiento de voz
+      const speechResponse = await transcribeAudio(
+        recordedAudio,
+        currentSource
+      );
+
+      const recognizedText =
+        speechResponse.transcript?.trim() || "";
+
+      if (!recognizedText) {
+        throw new Error(
+          "No se reconocieron palabras en la grabación."
+        );
+      }
+
+      if (recognizedText.length > MAX_LENGTH) {
+        throw new Error(
+          "La transcripción supera el límite permitido."
+        );
+      }
+
+      // Actualizar el texto sin reiniciar la operación.
+      setText(recognizedText);
+
+      // 2. Traducción
+      setVoiceStage("translating");
+      setStatus("loading");
+
+      const translationResponse = await translateText(
+        recognizedText,
+        currentSource,
+        currentTarget
+      );
+
+      const translatedText =
+        translationResponse.translated_text;
+
+      if (!translatedText) {
+        throw new Error(
+          "El servicio devolvió una traducción vacía."
+        );
+      }
+
+      // 3. Mostrar los resultados.
+      setResult(translatedText);
+      setLastTranslation({
+        source: currentSource,
+        target: currentTarget,
+      });
+
+      setSpeechStatus("success");
+      setStatus("success");
+      setVoiceStage("completed");
+
+      setAutoPlayVoice(true);
+      // 4. Solicitar reproducción de la nueva traducción.
+      setVoicePlaybackId((current) => current + 1);
+
+    } catch (err) {
+      setSpeechStatus("error");
+      setStatus("idle");
+      setVoiceStage("error");
+      setSpeechError(
+        err.message || "No se pudo completar la operación."
+      );
+    }
+  };
+
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -144,7 +246,7 @@ export default function App() {
           <nav className="header-nav" aria-label="Navegación principal">
             <a href="#traductor">Traductor</a>
             <a href="#proyecto">El proyecto</a>
-            <span className="version-pill"><span className="pill-dot" /> Demo v1.0</span>
+            <span className="version-pill"><span className="pill-dot" /> Demo voz a voz · Beta</span>
           </nav>
         </div>
       </header>
@@ -154,7 +256,7 @@ export default function App() {
           <div className="hero-copy">
             <div className="eyebrow"><Sparkles size={15} /> Inteligencia artificial e inclusión lingüística</div>
             <h1 id="hero-title">Dos idiomas.<br /><span>Una conexión.</span></h1>
-            <p>La tecnología puede acercarnos. Traduce textos entre español y quechua con una experiencia simple, clara y accesible.</p>
+            <p>La tecnología puede acercarnos. Escribe, graba y escucha traducciones entre español y quechua en una experiencia experimental de voz a voz.</p>
             <a className="hero-link" href="#traductor">Probar el traductor <ArrowRight size={17} /></a>
           </div>
           <div className="hero-visual" aria-hidden="true">
@@ -175,14 +277,14 @@ export default function App() {
           <div className="translator-card">
             <div className="translator-topbar">
               <div className="language-heading"><span>IDIOMA DE ORIGEN</span><strong>{languageNames[source]}</strong></div>
-              <button type="button" className="swap-btn" onClick={swapLanguages} aria-label="Intercambiar idiomas" title="Intercambiar idiomas"><ArrowDownUp size={19} /></button>
+              <button type="button" className="swap-btn" onClick={swapLanguages} aria-label="Intercambiar idiomas" title="Intercambiar idiomas" disabled={speechStatus === "loading"}><ArrowDownUp size={19} /></button>
               <div className="language-heading right"><span>IDIOMA DE DESTINO</span><strong>{languageNames[target]}</strong></div>
             </div>
             <div className="translator-panels">
               <div className="translation-panel input-panel">
                 <div className="panel-title"><span>Escribe tu mensaje</span><button type="button" className="clear-button" onClick={() => changeText('')} disabled={!text && !result}><RotateCcw size={14} /> Limpiar</button></div>
                 <label htmlFor="translation-input" className="sr-only">Texto a traducir</label>
-                <textarea id="translation-input" placeholder={source === 'es' ? 'Escribe aquí en español…' : 'Escribe aquí en quechua…'} value={text} onChange={(e) => changeText(e.target.value)} maxLength={MAX_LENGTH} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleTranslate(); } }} />
+                <textarea id="translation-input" placeholder={source === 'es' ? 'Escribe aquí en español…' : 'Escribe aquí en quechua…'} value={text} onChange={(e) => changeText(e.target.value)} maxLength={MAX_LENGTH} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleTranslate(); } }} disabled={speechStatus === "loading"}/>
                 <div className="panel-bottom"><span>{text.length} / {MAX_LENGTH} caracteres</span><span className="shortcut-hint">Ctrl + Enter para traducir</span></div>
               </div>
               <div className="translation-panel output-panel">
@@ -190,6 +292,16 @@ export default function App() {
                 <div className="result-content" aria-live="polite" aria-busy={status === 'loading'}>
                   {status === 'loading' ? <div className="loading-state"><LoaderCircle className="spin" size={24}/><span>Traduciendo tu mensaje…</span></div> : result ? <p className="translated-text">{result}</p> : <div className="empty-state"><Languages size={28} strokeWidth={1.5}/><span>Tu traducción aparecerá aquí.</span></div>}
                 </div>
+                {result && (
+                  <TranslationAudio
+                    key={`${target}:${result}:${voicePlaybackId}`}
+                    text={result}
+                    language={target}
+                    autoPlayToken={
+                      autoPlayVoice ? voicePlaybackId : 0
+                    }
+                  />
+                )}
                 <div className="panel-bottom output-bottom">
                   <span>{lastTranslation && result ? `${languageNames[lastTranslation.source]} → ${languageNames[lastTranslation.target]}` : 'Resultado de traducción'}</span>
                   <button type="button" className="copy-button" onClick={copyResult} disabled={!result}><span>{copied ? <CheckCheck size={16}/> : <ClipboardCopy size={16}/>}</span>{copied ? 'Copiado' : 'Copiar'}</button>
@@ -214,18 +326,19 @@ export default function App() {
               setRecordedAudio(blob);
               setRecordedLanguage(blob ? source : null);
               setSpeechStatus("idle");
+              setVoiceStage("");
               setSpeechError("");
             }}
           />
 
           <div className="voice-transcription">
             <div>
-              <h3>Convertir voz a texto</h3>
+              <h3>Reconoce y traduce tu voz</h3>
 
               <p>
                 {source === "es"
-                  ? "Reconocimiento de español boliviano mediante Google Cloud Speech-to-Text."
-                  : "Reconocimiento experimental de quechua mediante Meta MMS. Revisa cuidadosamente la transcripción."}
+                  ? "Habla en español. RIMAY transcribe con Google Cloud y puede traducir y reproducir el resultado en quechua."
+                  : "Habla en quechua. RIMAY utiliza Meta MMS para transcribir y puede traducir y reproducir el resultado en español. Revisa el texto reconocido."}
               </p>
             </div>
 
@@ -245,6 +358,45 @@ export default function App() {
                 : `Transcribir ${source === "es" ? "español" : "quechua"}`}
             </button>
 
+            <button
+              type="button"
+              className="voice-translate-btn"
+              onClick={handleVoiceTranslate}
+              disabled={
+                !recordedAudio ||
+                recordedLanguage !== source ||
+                speechStatus === "loading" ||
+                status === "loading"
+              }
+            >
+              <Languages size={18} />
+              Transcribir y traducir
+            </button>
+
+            {speechStatus === "loading" && (
+              <div
+                className="voice-progress"
+                role="status"
+                aria-live="polite"
+              >
+                <LoaderCircle className="spin" size={21} />
+
+                <div>
+                  <strong>
+                    {voiceStage === "translating"
+                      ? "Traduciendo el texto..."
+                      : "Reconociendo tu voz..."}
+                  </strong>
+
+                  <p>
+                    {voiceStage === "translating"
+                      ? "Preparando el resultado en el idioma de destino."
+                      : "Procesando el audio. El reconocimiento de quechua puede tardar más."}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {recordedAudio && recordedLanguage !== source && (
               <p className="voice-notice">
                 Has cambiado el idioma. Graba nuevamente para continuar.
@@ -253,8 +405,9 @@ export default function App() {
 
             {speechStatus === "success" && (
               <p className="voice-success">
-                Transcripción completada. Revisa el texto
-                en el traductor antes de continuar.
+                {voiceStage === "completed"
+                  ? "Traducción lista. Revisa ambos textos y usa el reproductor para escucharla."
+                  : "Transcripción lista. Revisa y corrige el texto antes de traducir."}
               </p>
             )}
 
@@ -270,8 +423,8 @@ export default function App() {
           <div className="project-card">
             <span className="section-kicker">SOBRE EL PROYECTO</span>
             <h2>Un puente entre lenguas y personas</h2>
-            <p>RIMAY es un prototipo de inteligencia artificial orientado a facilitar la comunicación entre hablantes de español y quechua, con la visión de adaptarse al quechua de Cochabamba y, en el futuro, apoyar la atención institucional.</p>
-            <div className="project-note"><Check size={16}/> Versión experimental: traducción de texto, no traducción de voz.</div>
+            <p>RIMAY es un prototipo experimental de inteligencia artificial que permite escribir o grabar mensajes en español y quechua, obtener una traducción escrita y escuchar su resultado en audio. Buscamos mejorar su precisión para el quechua de Cochabamba y, a futuro, explorar aplicaciones de atención institucional.</p>
+            <div className="project-note"><Check size={16}/> Prototipo voz a voz: reconocimiento de español con Google Cloud, reconocimiento experimental de quechua con Meta MMS, traducción automática y síntesis de voz. La precisión lingüística —especialmente en quechua cochabambino— y los tiempos de respuesta siguen pendientes de validación.</div>
           </div>
         </section>
       </main>
