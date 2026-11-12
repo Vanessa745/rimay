@@ -93,7 +93,7 @@ async function convertToWav(audioBlob) {
   }
 }
 
-export async function transcribeAudio(audioBlob) {
+export async function transcribeAudio(audioBlob, language = "es") {
   const wavBlob = await convertToWav(audioBlob);
 
   const formData = new FormData();
@@ -103,6 +103,8 @@ export async function transcribeAudio(audioBlob) {
     wavBlob,
     "rimay-audio.wav"
   );
+  
+  formData.append("language", language);
 
   let response;
 

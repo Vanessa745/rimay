@@ -27,6 +27,7 @@ export default function App() {
   const [recordedAudio, setRecordedAudio] = useState(null);
   const [speechStatus, setSpeechStatus] = useState("idle");
   const [speechError, setSpeechError] = useState("");
+  const [recordedLanguage, setRecordedLanguage] = useState(null);
   const controllerRef = useRef(null);
   const requestIdRef = useRef(0);
 
@@ -103,12 +104,7 @@ export default function App() {
   }
 
   const handleTranscribe = async () => {
-    if (!recordedAudio || speechStatus === "loading") return;
-
-    if (source !== "es") {
-      setSpeechError(
-        "Por ahora solo está disponible el reconocimiento de español."
-      );
+    if (!recordedAudio || speechStatus === "loading") {
       return;
     }
 
@@ -116,16 +112,20 @@ export default function App() {
     setSpeechError("");
 
     try {
-      const response = await transcribeAudio(recordedAudio);
+      const response = await transcribeAudio(
+        recordedAudio,
+        source
+      );
 
-      // Reutiliza la función actual del traductor.
-      changeText(response.transcript.slice(0, MAX_LENGTH));
+      changeText(
+        response.transcript.slice(0, MAX_LENGTH)
+      );
 
       setSpeechStatus("success");
     } catch (err) {
       setSpeechStatus("error");
       setSpeechError(
-        err.message || "No se pudo reconocer la voz."
+        err.message || "No se pudo reconocer el audio."
       );
     }
   };
@@ -212,6 +212,7 @@ export default function App() {
           <AudioRecorder
             onAudioReady={(blob) => {
               setRecordedAudio(blob);
+              setRecordedLanguage(blob ? source : null);
               setSpeechStatus("idle");
               setSpeechError("");
             }}
@@ -222,16 +223,10 @@ export default function App() {
               <h3>Convertir voz a texto</h3>
 
               <p>
-                Reconocimiento de español boliviano.
-                El audio se enviará a Google Cloud
-                únicamente cuando presiones Transcribir.
+                {source === "es"
+                  ? "Reconocimiento de español boliviano mediante Google Cloud Speech-to-Text."
+                  : "Reconocimiento experimental de quechua mediante Meta MMS. Revisa cuidadosamente la transcripción."}
               </p>
-
-              {source !== "es" && (
-                <p className="voice-notice">
-                  Selecciona Español como idioma de origen.
-                </p>
-              )}
             </div>
 
             <button
@@ -240,14 +235,21 @@ export default function App() {
               onClick={handleTranscribe}
               disabled={
                 !recordedAudio ||
-                source !== "es" ||
-                speechStatus === "loading"
+                speechStatus === "loading" ||
+                status === "loading" ||
+                recordedLanguage !== source
               }
             >
               {speechStatus === "loading"
                 ? "Reconociendo voz..."
-                : "Transcribir audio"}
+                : `Transcribir ${source === "es" ? "español" : "quechua"}`}
             </button>
+
+            {recordedAudio && recordedLanguage !== source && (
+              <p className="voice-notice">
+                Has cambiado el idioma. Graba nuevamente para continuar.
+              </p>
+            )}
 
             {speechStatus === "success" && (
               <p className="voice-success">

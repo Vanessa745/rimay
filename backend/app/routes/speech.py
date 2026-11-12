@@ -1,12 +1,21 @@
 
 import io
 import logging
+import os
 import wave
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    HTTPException,
+    UploadFile
+)
 from google.api_core.exceptions import GoogleAPICallError
+from starlette.concurrency import run_in_threadpool
 
 from app.services.speech_service import transcribe_spanish
+from app.services.quechua_speech_service import transcribe_quechua
 
 
 router = APIRouter(prefix="/api", tags=["Speech"])
@@ -18,8 +27,23 @@ MAX_SECONDS = 30
 
 @router.post("/transcribe")
 async def transcribe_audio(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    language: str = Form("es")
 ):
+    if language not in ("es", "qu"):
+        raise HTTPException(
+            status_code=422,
+            detail="Idioma no compatible."
+        )
+
+    if language == "qu" and (
+        os.getenv("RIMAY_ENABLE_MMS", "").lower() != "true"
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Reconocimiento de quechua desactivado."
+        )
+
     try:
         audio_bytes = await file.read(MAX_BYTES + 1)
     finally:
@@ -48,7 +72,7 @@ async def transcribe_audio(
     except (wave.Error, EOFError, ValueError):
         raise HTTPException(
             status_code=400,
-            detail="El archivo no es un WAV válido."
+            detail="Archivo WAV inválido."
         )
 
     if (
@@ -59,7 +83,7 @@ async def transcribe_audio(
     ):
         raise HTTPException(
             status_code=400,
-            detail="Se requiere audio WAV PCM16, mono, 16 kHz."
+            detail="Se requiere WAV PCM16 mono a 16 kHz."
         )
 
     duration = frame_count / sample_rate
@@ -67,34 +91,50 @@ async def transcribe_audio(
     if duration <= 0 or duration > MAX_SECONDS:
         raise HTTPException(
             status_code=400,
-            detail="La grabación debe durar entre 0 y 30 segundos."
+            detail="El audio debe durar entre 0 y 30 segundos."
         )
 
     try:
-        transcript = transcribe_spanish(audio_bytes)
+        if language == "es":
+            transcript = await run_in_threadpool(
+                transcribe_spanish,
+                audio_bytes
+            )
+
+            model_name = "Google Speech-to-Text"
+
+        else:
+            transcript = await run_in_threadpool(
+                transcribe_quechua,
+                audio_bytes
+            )
+
+            model_name = "Meta MMS - quh"
 
     except GoogleAPICallError:
-        logger.exception("Error de Speech-to-Text")
+        logger.exception("Error en Google Speech-to-Text")
         raise HTTPException(
             status_code=502,
-            detail="El reconocimiento de voz no está disponible."
+            detail="Servicio de reconocimiento no disponible."
         )
 
     except Exception:
-        logger.exception("Error inesperado de transcripción")
+        logger.exception("Error al procesar reconocimiento")
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo procesar el audio."
+            status_code=503,
+            detail="No fue posible procesar el audio."
         )
 
     if not transcript:
         raise HTTPException(
             status_code=422,
-            detail="No se pudo reconocer una frase en el audio."
+            detail="No se reconocieron palabras en el audio."
         )
 
     return {
         "transcript": transcript,
-        "language": "es-BO",
-        "duration_seconds": round(duration, 2),
+        "language": language,
+        "model": model_name,
+        "experimental": language == "qu",
+        "duration_seconds": round(duration, 2)
     }
