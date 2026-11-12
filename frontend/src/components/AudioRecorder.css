@@ -1,0 +1,236 @@
+
+.rimay-recorder {
+  width: 100%;
+  margin: 0;
+  padding: 28px;
+  border: 1px solid #dce5e7;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 10px 35px rgba(3, 41, 100, 0.06);
+}
+
+.recorder-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.recorder-eyebrow {
+  color: #05636c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.recorder-heading h3 {
+  color: #032964;
+  font-size: 24px;
+  margin: 8px 0;
+}
+
+.recorder-heading p {
+  color: #6b7c80;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.recorder-beta {
+  white-space: nowrap;
+  padding: 7px 12px;
+  border-radius: 30px;
+  background: #fff1cc;
+  color: #705000;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recorder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border: 1px dashed #c4d8d6;
+  border-radius: 18px;
+  background: #f8fbfa;
+  text-align: center;
+}
+
+.recorder-mic {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  color: #05636c;
+  background: #e4f2ef;
+  transition: all 0.25s ease;
+}
+
+.recorder-mic.is-recording {
+  color: white;
+  background: #dc0a5e;
+  box-shadow: 0 0 0 9px rgba(220, 10, 94, 0.1);
+}
+
+.recorder-pulse {
+  display: flex;
+  animation: recorder-pulse 1.5s infinite;
+}
+
+@keyframes recorder-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.75;
+  }
+}
+
+.recorder-status {
+  font-size: 16px;
+  font-weight: 700;
+  color: #18343a;
+}
+
+.recorder-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 20px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.recorder-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.recorder-btn.primary {
+  background: #05636c;
+  color: white;
+}
+
+.recorder-btn.primary:hover:not(:disabled) {
+  background: #032964;
+}
+
+.recorder-btn.stop {
+  background: #dc0a5e;
+  color: white;
+}
+
+.recorder-btn.secondary {
+  background: #e5f3f0;
+  color: #05636c;
+}
+
+.recorder-btn.delete {
+  background: white;
+  color: #9b0334;
+  border-color: #f0d9df;
+}
+
+.recorder-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.recorder-result {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.recorder-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #05636c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.recorder-player {
+  width: 100%;
+}
+
+.recorder-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recorder-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: #a31546;
+  background: #fff0f4;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.recorder-help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #6b7c80;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.voice-section {
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+@media (max-width: 640px) {
+  .voice-section {
+    margin-top: 28px;
+    margin-bottom: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rimay-recorder {
+    padding: 18px;
+  }
+
+  .recorder-heading {
+    flex-direction: column;
+  }
+
+  .recorder-content {
+    padding: 20px 12px;
+  }
+
+  .recorder-heading h3 {
+    font-size: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recorder-pulse {
+    animation: none;
+  }
+}
